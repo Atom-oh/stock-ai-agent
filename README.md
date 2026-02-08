@@ -170,4 +170,3 @@ python stock_agent.py
 - yfinance는 Yahoo Finance API를 사용하므로 실시간 데이터가 약간 지연될 수 있습니다
 - AWS Bedrock 사용 시 비용이 발생할 수 있습니다
 - 투자 조언이 아닌 정보 제공 목적입니다
-# stock-ai-agent

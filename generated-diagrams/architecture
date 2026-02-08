@@ -1,0 +1,35 @@
+digraph "Stock AI Agent Architecture" {
+	graph [fontcolor="#2D3436" fontname="Sans-Serif" fontsize=15 label="Stock AI Agent Architecture" nodesep=0.60 pad=2.0 rankdir=LR ranksep=0.75 splines=ortho]
+	node [fixedsize=true fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13 height=1.4 imagescale=true labelloc=b shape=box style=rounded width=1.4]
+	edge [color="#7B8894"]
+	cc39215fb261486c89d777e4bdf45c11 [label="사용자" height=1.9 image="/Users/youngjik/.cache/uv/archive-v0/xNyU5xwmYv0vt8HEhjMzi/lib/python3.13/site-packages/resources/aws/general/user.png" shape=none]
+	subgraph "cluster_AWS Cloud" {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label="AWS Cloud" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		b10ea716a62744c0855460e53b710d47 [label="CloudFront
+(HTTPS)" height=2.3 image="/Users/youngjik/.cache/uv/archive-v0/xNyU5xwmYv0vt8HEhjMzi/lib/python3.13/site-packages/resources/aws/network/cloudfront.png" shape=none]
+		subgraph cluster_VPC {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label=VPC labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			"9827f9aee16d4f7d91feb906fdf23f95" [label="ALB
+(HTTP:80)" height=2.3 image="/Users/youngjik/.cache/uv/archive-v0/xNyU5xwmYv0vt8HEhjMzi/lib/python3.13/site-packages/resources/aws/network/elb-application-load-balancer.png" shape=none]
+			subgraph "cluster_Public Subnet" {
+				graph [bgcolor="#ECE8F6" fontname="Sans-Serif" fontsize=12 label="Public Subnet" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+				"515783f72b2945aabf3c1f8c4481be69" [label="EC2 t3.medium
+Streamlit App" height=2.3 image="/Users/youngjik/.cache/uv/archive-v0/xNyU5xwmYv0vt8HEhjMzi/lib/python3.13/site-packages/resources/aws/compute/ec2.png" shape=none]
+			}
+			subgraph "cluster_Private Subnet" {
+				graph [bgcolor="#ECE8F6" fontname="Sans-Serif" fontsize=12 label="Private Subnet" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+				"00ecc1ec6b714bcd9299e6ffbae59420" [label="NAT Gateway" height=1.9 image="/Users/youngjik/.cache/uv/archive-v0/xNyU5xwmYv0vt8HEhjMzi/lib/python3.13/site-packages/resources/aws/network/nat-gateway.png" shape=none]
+			}
+		}
+		"569721aaeb0a4530aa6353dfbf2f123f" [label="Bedrock
+Claude 3.5" height=2.3 image="/Users/youngjik/.cache/uv/archive-v0/xNyU5xwmYv0vt8HEhjMzi/lib/python3.13/site-packages/resources/aws/ml/bedrock.png" shape=none]
+		"7147aa468de74f7fb843f01a2d19f709" [label="S3
+Code Deploy" height=2.3 image="/Users/youngjik/.cache/uv/archive-v0/xNyU5xwmYv0vt8HEhjMzi/lib/python3.13/site-packages/resources/aws/storage/simple-storage-service-s3.png" shape=none]
+	}
+	cc39215fb261486c89d777e4bdf45c11 -> b10ea716a62744c0855460e53b710d47 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	b10ea716a62744c0855460e53b710d47 -> "9827f9aee16d4f7d91feb906fdf23f95" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"9827f9aee16d4f7d91feb906fdf23f95" -> "515783f72b2945aabf3c1f8c4481be69" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"515783f72b2945aabf3c1f8c4481be69" -> "00ecc1ec6b714bcd9299e6ffbae59420" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"00ecc1ec6b714bcd9299e6ffbae59420" -> "569721aaeb0a4530aa6353dfbf2f123f" [label="API Calls" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"7147aa468de74f7fb843f01a2d19f709" -> "515783f72b2945aabf3c1f8c4481be69" [label=Download dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+}
