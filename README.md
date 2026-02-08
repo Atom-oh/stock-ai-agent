@@ -10,7 +10,7 @@ Strands Agents SDK와 Amazon Bedrock Claude 모델을 사용한 주식 정보 �
 
 ## 📸 스크린샷
 
-[📺 전과정 보기](https://youtu.be/Fy1OkAH-PJ0?si=8uR1r2ScOfdrgFx9)
+[📺 개발과정 영상](https://youtu.be/Fy1OkAH-PJ0?si=8uR1r2ScOfdrgFx9)
 
 ### 메인 화면 - 주가 차트
 ![메인 화면](images/fig1.png)
