@@ -1,6 +1,15 @@
 # 주식 정보 AI Agent
 
+![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-Bedrock-FF9900?logo=amazon-aws&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-Kiro_CLI-232F3E?logo=amazon-aws&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.0+-FF4B4B?logo=streamlit&logoColor=white)
+
 Strands Agents SDK와 Amazon Bedrock Claude 모델을 사용한 주식 정보 조회 AI Agent입니다.
+
+## 🎬 데모 영상
+
+[![YouTube](https://img.shields.io/badge/YouTube-개발과정_영상-red?style=for-the-badge&logo=youtube)](https://youtu.be/Fy1OkAH-PJ0?si=kBJSSUU2mSR5vsV5)
 
 ## 🏗️ 아키텍처
 
@@ -9,8 +18,6 @@ Strands Agents SDK와 Amazon Bedrock Claude 모델을 사용한 주식 정보 �
 **배포 구조**: User -> CloudFront (HTTPS) → ALB (HTTP:80) → EC2 (Streamlit) → Bedrock Claude 3.5
 
 ## 📸 스크린샷
-
-[![개발과정 영상](https://img.youtube.com/vi/Fy1OkAH-PJ0/maxresdefault.jpg)](https://youtu.be/Fy1OkAH-PJ0?si=8uR1r2ScOfdrgFx9)
 
 ### 메인 화면 - 주가 차트
 ![메인 화면](images/fig1.png)
@@ -172,3 +179,15 @@ python stock_agent.py
 - yfinance는 Yahoo Finance API를 사용하므로 실시간 데이터가 약간 지연될 수 있습니다
 - AWS Bedrock 사용 시 비용이 발생할 수 있습니다
 - 투자 조언이 아닌 정보 제공 목적입니다
+
+## 🤝 기여 방법
+
+1. 이 저장소를 Fork 합니다
+2. 새 브랜치를 생성합니다 (`git checkout -b feature/새기능`)
+3. 변경사항을 커밋합니다 (`git commit -m 'Add 새기능'`)
+4. 브랜치에 Push 합니다 (`git push origin feature/새기능`)
+5. Pull Request를 생성합니다
+
+## 📄 라이선스
+
+이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
