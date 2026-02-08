@@ -1,30 +1,75 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+주식 정보 AI Agent - Streamlit 웹 애플리케이션
 
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
-import re
-from stock_agent import get_stock_price, analyze_stock_trend, analyze_company_news, get_ticker, get_fundamental_analysis, get_institutional_holders, get_macro_indicators
-from strands import Agent
-from strands.models import BedrockModel
+이 애플리케이션은 다음 기능을 제공합니다:
+- 실시간 주가 조회 및 차트 시각화
+- AI 기반 주가 예측
+- 기술적 분석 (이동평균, RSI, MACD, 볼린저밴드)
+- 기본적 분석 (밸류에이션, 수익성, 재무건전성)
+- 동종업계 비교 분석
+- 거시경제 지표 모니터링
+- 뉴스 감성 분석 (NLP 기반)
 
-# 페이지 설정
-st.set_page_config(
-    page_title="주식 정보 AI Agent",
-    page_icon="📊",
-    layout="wide"
+사용 기술:
+- Streamlit: 웹 UI 프레임워크
+- yfinance: 주가 데이터 API
+- Plotly: 인터랙티브 차트
+- AWS Bedrock: Claude AI 모델
+- Strands Agent SDK: AI 에이전트 프레임워크
+"""
+
+# =============================================================================
+# 라이브러리 임포트
+# =============================================================================
+import streamlit as st          # 웹 UI 프레임워크
+import yfinance as yf           # 야후 파이낸스 주가 데이터
+import pandas as pd             # 데이터 처리
+import plotly.graph_objects as go  # 인터랙티브 차트
+from datetime import datetime, timedelta  # 날짜/시간 처리
+import re                       # 정규표현식 (예측 결과 파싱용)
+
+# 커스텀 모듈 임포트 - AI 에이전트 도구들
+from stock_agent import (
+    get_stock_price,            # 현재가 조회 도구
+    analyze_stock_trend,        # 기술적 분석 도구
+    analyze_company_news,       # 뉴스 감성 분석 도구
+    get_ticker,                 # 회사명 → 티커 변환
+    get_fundamental_analysis,   # 기본적 분석 도구
+    get_institutional_holders,  # 기관 보유 현황 도구
+    get_peer_comparison,        # 동종업계 비교 도구
+    get_macro_indicators        # 거시경제 지표 도구
 )
 
+# AWS Bedrock 연동
+from strands import Agent                    # AI 에이전트 클래스
+from strands.models import BedrockModel      # Bedrock 모델 래퍼
+
+# =============================================================================
+# Streamlit 페이지 설정
+# =============================================================================
+st.set_page_config(
+    page_title="주식 정보 AI Agent",  # 브라우저 탭 제목
+    page_icon="📊",                    # 파비콘
+    layout="wide"                      # 넓은 레이아웃 사용
+)
+
+# =============================================================================
 # 세션 상태 초기화
+# Streamlit은 매 인터랙션마다 스크립트를 재실행하므로
+# 상태를 유지하려면 session_state를 사용해야 함
+# =============================================================================
+
+# Bedrock 모델 초기화 (한 번만 생성)
 if 'bedrock_model' not in st.session_state:
     st.session_state.bedrock_model = BedrockModel(
         model_id="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         region_name="us-east-1"
     )
 
+# AI 에이전트 시스템 프롬프트 초기화
+# 이 프롬프트는 AI가 어떻게 응답해야 하는지 정의함
 if 'system_prompt' not in st.session_state:
     st.session_state.system_prompt = """당신은 주식 정보 도우미입니다.
 
@@ -38,13 +83,14 @@ if 'system_prompt' not in st.session_state:
 - 사용자: "삼성전자" → company_name="삼성전자" (O)
 - 사용자: "삼성전자" → company_name="Samsung Electronics" (X)
 
-**종합 분석 요청 시 반드시 6가지 도구 모두 사용:**
+**종합 분석 요청 시 반드시 8가지 도구 모두 사용:**
 1. get_stock_price - 현재가 확인
 2. analyze_stock_trend - 기술적 분석
 3. get_fundamental_analysis - 기본적 분석 (밸류에이션, 수익성, 재무건전성, 성장성)
 4. get_institutional_holders - 수급 분석 (기관/외국인 보유현황)
-5. get_macro_indicators - 거시경제 지표 (지수, VIX, 금리, 환율, 원자재)
-6. analyze_company_news - 뉴스 감성 분석
+5. get_peer_comparison - 동종업계 비교 분석 (경쟁사 대비 상대 평가)
+6. get_macro_indicators - 거시경제 지표 (지수, VIX, 금리, 환율, 원자재)
+7. analyze_company_news - 뉴스 NLP 감성 분석 (점수화된 감성 분석)
 
 **주가 분석 시 매수/매도 신호를 명확히 표시:**
 
@@ -153,6 +199,26 @@ if 'system_prompt' not in st.session_state:
    → 해석: 금 상승 = 안전자산 선호, 유가 상승 = 인플레 우려
    → 현재 판단: [위험선호/안전선호/중립]
 
+🏆 동종업계 비교:
+
+📊 업종: {섹터} - {업종}
+
+📈 경쟁사 대비 상대 평가:
+- P/E: {업종 평균 대비 상태} (회사: {값}, 업종평균: {값})
+- P/B: {업종 평균 대비 상태} (회사: {값}, 업종평균: {값})
+- ROE: {업종 평균 대비 상태} (회사: {값}%, 업종평균: {값}%)
+   → 해석: 밸류에이션 저평가 + 수익성 상위 = 매력적
+   → 현재 판단: [업종 대비 우수/적정/열위]
+
+📰 뉴스 감성 분석:
+
+🎯 종합 감성 점수: {-100~+100 점수} ({매우긍정/긍정/중립/부정/매우부정})
+   → 의미: 뉴스 헤드라인의 NLP 기반 감성 분석 결과
+   → 해석: +20 이상=매우 긍정, +5~+20=긍정, -5~+5=중립, -20~-5=부정, -20 이하=매우 부정
+   → 긍정 뉴스: {개수}건, 부정 뉴스: {개수}건
+   → 주요 긍정 키워드: {키워드들}
+   → 주요 부정 키워드: {키워드들}
+
 ✅ 긍정 요인:
 - [기술적 분석 + 기본적 분석 기반 구체적 이유]
 
@@ -168,14 +234,19 @@ if 'system_prompt' not in st.session_state:
 반드시 한글로 답변하세요.
 """
 
+# 조회 히스토리 저장 (최근 검색 기록)
 if 'history' not in st.session_state:
     st.session_state.history = []
 
-# 헤더
+# =============================================================================
+# 페이지 헤더
+# =============================================================================
 st.title("📊 주식 정보 AI Agent")
 st.markdown("실시간 주가 조회 및 AI 기반 투자 분석")
 
-# 사이드바
+# =============================================================================
+# 사이드바 - 사용 가이드 및 관심 종목 관리
+# =============================================================================
 with st.sidebar:
     st.header("📌 사용 가이드")
     st.markdown("""
@@ -192,14 +263,18 @@ with st.sidebar:
     """)
     
     st.divider()
-    
+
+    # -------------------------------------------------------------------------
+    # 관심 종목 관리 섹션
+    # 사용자가 자주 조회하는 종목을 저장하고 빠르게 접근 가능
+    # -------------------------------------------------------------------------
     st.header("⭐ 관심 종목")
-    
-    # 세션 상태에 관심 종목 리스트 초기화
+
+    # 세션 상태에 관심 종목 리스트 초기화 (기본 3개 종목)
     if 'watchlist' not in st.session_state:
         st.session_state.watchlist = ["삼성전자", "SK하이닉스", "네이버"]
-    
-    # 관심 종목 추가 폼
+
+    # 관심 종목 추가 입력 폼
     with st.form("add_watchlist"):
         new_stock = st.text_input("종목 추가", placeholder="예: 카카오, Apple")
         submitted = st.form_submit_button("➕ 추가")
@@ -237,10 +312,13 @@ with st.sidebar:
     - Google, Microsoft, Meta, Nvidia
     """)
 
-# 메인 영역
-col1, col2 = st.columns([3, 1])
+# =============================================================================
+# 메인 입력 영역
+# =============================================================================
+col1, col2 = st.columns([3, 1])  # 3:1 비율로 컬럼 분할
 
 with col1:
+    # 회사명 입력 필드
     user_input = st.text_input(
         "회사명을 입력하세요",
         placeholder="예: 삼성전자, Amazon, SK 하이닉스",
@@ -248,12 +326,17 @@ with col1:
     )
 
 with col2:
+    # 분석 시작 버튼
     analyze_button = st.button("🔍 분석하기", type="primary", use_container_width=True)
 
-# 기간 선택 (분석 전에 표시)
+# -------------------------------------------------------------------------
+# 분석 기간 선택
+# yfinance API에서 지원하는 기간: 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+# -------------------------------------------------------------------------
 if 'selected_period' not in st.session_state:
-    st.session_state.selected_period = "3개월"
+    st.session_state.selected_period = "3개월"  # 기본값: 3개월
 
+# 수평 라디오 버튼으로 기간 선택
 period_option = st.radio(
     "기간 선택",
     ["3개월", "6개월", "1년", "5년"],
@@ -262,12 +345,13 @@ period_option = st.radio(
     key="period_radio"
 )
 
-# 기간 변경 시 자동 재분석
+# 기간 변경 시 자동으로 페이지 새로고침하여 재분석
 if period_option != st.session_state.selected_period:
     st.session_state.selected_period = period_option
     if user_input:
         st.rerun()
 
+# 한글 기간명 → yfinance 기간 코드 매핑
 period_map = {
     "3개월": "3mo",
     "6개월": "6mo",
@@ -276,123 +360,178 @@ period_map = {
 }
 period = period_map[period_option]
 
-# 분석 실행
+# =============================================================================
+# 분석 실행 메인 로직
+# 버튼 클릭 또는 자동 분석 플래그가 설정된 경우 실행
+# =============================================================================
 if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
-    with st.spinner("분석 중..."):
+    with st.spinner("분석 중..."):  # 로딩 스피너 표시
         try:
-            # 자동 분석 플래그 설정
+            # 자동 분석 플래그 설정 (기간 변경 시 자동 재분석용)
             st.session_state.auto_analyze = True
 
-            # 회사명 추출 (키워드 제거)
+            # ---------------------------------------------------------------------
+            # 회사명 전처리: "삼성전자 주가분석" → "삼성전자"
+            # 불필요한 키워드를 제거하여 순수 회사명만 추출
+            # ---------------------------------------------------------------------
             keywords = ['주가', '분석', '매수', '매도', '타이밍', '예측', '전망', '추천']
             company_name = user_input
             for keyword in keywords:
                 company_name = company_name.replace(keyword, '').strip()
-            # 빈 문자열이면 원본 사용
+            # 빈 문자열이면 원본의 첫 단어 사용
             if not company_name:
                 company_name = user_input.split()[0]
+
+            # 회사명을 티커 심볼로 변환 (예: "삼성전자" → "005930.KS")
             ticker = get_ticker(company_name)
-            
-            # 주가 데이터 조회
+
+            # ---------------------------------------------------------------------
+            # yfinance를 통한 주가 데이터 조회
+            # ---------------------------------------------------------------------
             stock = yf.Ticker(ticker)
-            df = stock.history(period=period)
+            df = stock.history(period=period)  # 선택된 기간의 OHLCV 데이터
             
             if not df.empty:
-                # 탭 생성
-                tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📈 차트", "🔮 예측", "📊 기술적 분석", "💰 펀더멘털", "🌍 거시경제", "📰 뉴스"])
-                
+                # -----------------------------------------------------------------
+                # 7개 탭으로 분석 결과 표시
+                # 1. 차트: 캔들스틱 + 이동평균선
+                # 2. 예측: AI 기반 미래 주가 예측
+                # 3. 기술적 분석: RSI, MACD, 볼린저밴드
+                # 4. 펀더멘털: 밸류에이션, 수익성, 재무건전성
+                # 5. 동종업계 비교: 경쟁사 대비 평가
+                # 6. 거시경제: 지수, 금리, 환율, VIX
+                # 7. 뉴스: 감성 분석 포함
+                # -----------------------------------------------------------------
+                tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+                    "📈 차트", "🔮 예측", "📊 기술적 분석",
+                    "💰 펀더멘털", "🏆 동종업계 비교", "🌍 거시경제", "📰 뉴스"
+                ])
+
+                # =============================================================
+                # 탭 1: 주가 차트 (캔들스틱 + 이동평균선)
+                # =============================================================
                 with tab1:
-                    # 주가 차트 (Toss 스타일)
+                    # Plotly를 사용한 인터랙티브 차트 생성
                     fig = go.Figure()
                     
-                    # 캔들스틱 차트
+                    # 캔들스틱 차트 추가
+                    # - 빨간색: 상승 (시가 < 종가)
+                    # - 청록색: 하락 (시가 > 종가)
                     fig.add_trace(go.Candlestick(
                         x=df.index,
-                        open=df['Open'],
-                        high=df['High'],
-                        low=df['Low'],
-                        close=df['Close'],
+                        open=df['Open'],      # 시가
+                        high=df['High'],      # 고가
+                        low=df['Low'],        # 저가
+                        close=df['Close'],    # 종가
                         name='주가',
-                        increasing_line_color='#FF6B6B',
-                        decreasing_line_color='#4ECDC4'
+                        increasing_line_color='#FF6B6B',   # 상승: 빨간색
+                        decreasing_line_color='#4ECDC4'    # 하락: 청록색
                     ))
-                    
-                    # 이동평균선
+
+                    # 이동평균선 계산 및 추가
+                    # MA5: 5일 단기 이동평균 (단기 추세)
+                    # MA20: 20일 중기 이동평균 (중기 추세)
                     df['MA5'] = df['Close'].rolling(window=5).mean()
                     df['MA20'] = df['Close'].rolling(window=20).mean()
-                    
+
+                    # MA5 선 추가 (노란색)
                     fig.add_trace(go.Scatter(
                         x=df.index, y=df['MA5'],
                         name='MA5', line=dict(color='#FFE66D', width=1)
                     ))
+                    # MA20 선 추가 (하늘색)
                     fig.add_trace(go.Scatter(
                         x=df.index, y=df['MA20'],
                         name='MA20', line=dict(color='#A8DADC', width=1)
                     ))
-                    
-                    # 레이아웃
+
+                    # 차트 레이아웃 설정
                     fig.update_layout(
                         title=f"{company_name} 주가 추이 ({period_option})",
                         yaxis_title="가격",
                         xaxis_title="날짜",
-                        template="plotly_white",
-                        height=500,
-                        hovermode='x unified',
-                        xaxis_rangeslider_visible=False
+                        template="plotly_white",       # 깔끔한 화이트 테마
+                        height=500,                   # 차트 높이
+                        hovermode='x unified',        # 호버 시 같은 x축 데이터 모두 표시
+                        xaxis_rangeslider_visible=False  # 하단 미니 차트 숨김
                     )
-                    
+
+                    # 차트를 Streamlit에 표시
                     st.plotly_chart(fig, use_container_width=True)
-                    
-                    # 주요 지표 카드
-                    current_price = df['Close'].iloc[-1]
-                    prev_price = df['Close'].iloc[-2] if len(df) > 1 else current_price
-                    change = current_price - prev_price
-                    # ZeroDivision 방지
-                    change_pct = (change / prev_price) * 100 if prev_price > 0 else 0
+
+                    # ---------------------------------------------------------
+                    # 주요 지표 카드 (현재가, 최고가, 최저가, 거래량)
+                    # ---------------------------------------------------------
+                    current_price = df['Close'].iloc[-1]  # 현재가 (최근 종가)
+                    prev_price = df['Close'].iloc[-2] if len(df) > 1 else current_price  # 전일 종가
+                    change = current_price - prev_price   # 변동폭
+                    change_pct = (change / prev_price) * 100 if prev_price > 0 else 0  # 변동률 (%)
 
                     # 통화 단위 결정 (한국 주식: 원, 미국 주식: $)
+                    # 티커가 .KS로 끝나면 한국 주식
                     currency = "원" if ticker.endswith(".KS") else "$"
                     price_format = f"{current_price:,.0f}{currency}" if ticker.endswith(".KS") else f"${current_price:,.2f}"
                     high_format = f"{df['High'].max():,.0f}{currency}" if ticker.endswith(".KS") else f"${df['High'].max():,.2f}"
                     low_format = f"{df['Low'].min():,.0f}{currency}" if ticker.endswith(".KS") else f"${df['Low'].min():,.2f}"
 
+                    # 4개 컬럼으로 지표 카드 표시
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
-                        st.metric("현재가", price_format, f"{change_pct:+.2f}%")
+                        st.metric("현재가", price_format, f"{change_pct:+.2f}%")  # 변동률 표시
                     with col2:
-                        st.metric("최고가", high_format)
+                        st.metric("최고가", high_format)  # 기간 내 최고가
                     with col3:
-                        st.metric("최저가", low_format)
+                        st.metric("최저가", low_format)   # 기간 내 최저가
                     with col4:
-                        st.metric("거래량", f"{df['Volume'].iloc[-1]:,.0f}")
+                        st.metric("거래량", f"{df['Volume'].iloc[-1]:,.0f}")  # 최근 거래량
                 
+                # =============================================================
+                # 탭 2: AI 기반 주가 예측
+                # Claude AI를 활용하여 기술적/기본적 분석 데이터를 종합한 예측
+                # =============================================================
                 with tab2:
-                    # AI 기반 미래 예측
                     st.subheader("🔮 AI 주가 예측")
-                    
-                    # 예측 기간 선택
+
+                    # 예측 기간 선택 드롭다운
                     forecast_period = st.selectbox(
                         "예측 기간",
-                        ["7일", "1개월", "3개월", "6개월"],
+                        ["1일", "7일", "1개월", "3개월", "6개월"],
                         key="forecast_period"
                     )
-                    
+
+                    # AI 예측 생성 버튼
                     if st.button("🤖 AI 예측 생성", use_container_width=True):
                         with st.spinner("AI가 종합 분석 중..."):
                             try:
-                                # 기술적 분석 데이터 수집
+                                # ---------------------------------------------------------
+                                # AI 예측을 위한 데이터 수집
+                                # 모든 도구를 호출하여 종합 데이터를 수집
+                                # ---------------------------------------------------------
+
+                                # 기술적 분석 데이터 (RSI, MACD, 볼린저밴드 등)
                                 analysis = analyze_stock_trend(company_name, period)
+
+                                # 뉴스 감성 분석 데이터
                                 news = analyze_company_news(company_name)
+
+                                # 현재 주가 정보
                                 price_info = get_stock_price(company_name)
-                                # 기본적 분석 데이터 수집
+
+                                # 기본적 분석 데이터 (밸류에이션, 수익성 등)
                                 fundamental = get_fundamental_analysis(company_name)
+
+                                # 기관/내부자 보유 현황
                                 holders = get_institutional_holders(company_name)
-                                # 거시경제 데이터 수집
+
+                                # 동종업계 비교 데이터
+                                peer_data = get_peer_comparison(company_name)
+
+                                # 거시경제 지표 (지수, VIX, 금리, 환율)
                                 macro = get_macro_indicators()
 
                                 current_price = float(price_info.get('current_price', 0))
 
-                                # 펀더멘털 데이터 추출
+                                # 펀더멘털 데이터 안전하게 추출 (에러 시 빈 딕셔너리)
                                 val = fundamental.get('valuation', {}) if 'error' not in fundamental else {}
                                 prof = fundamental.get('profitability', {}) if 'error' not in fundamental else {}
                                 health = fundamental.get('financial_health', {}) if 'error' not in fundamental else {}
@@ -443,8 +582,18 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
 - 금 가격: ${macro.get('commodities', {}).get('Gold', {}).get('price', 'N/A')}
 - 유가 (WTI): ${macro.get('commodities', {}).get('Crude Oil (WTI)', {}).get('price', 'N/A')}
 
-**최근 뉴스:**
-{chr(10).join([f"- {item['title']}" for item in news.get('news', [])[:3]])}
+**동종업계 비교:**
+- 섹터/업종: {peer_data.get('sector', 'N/A')} / {peer_data.get('industry', 'N/A')}
+- 업종 대비 P/E: {peer_data.get('relative_position', {}).get('pe_ratio', 'N/A')}
+- 업종 대비 ROE: {peer_data.get('relative_position', {}).get('roe', 'N/A')}
+- 업종 대비 성장성: {peer_data.get('relative_position', {}).get('revenue_growth', 'N/A')}
+
+**뉴스 감성 분석:**
+- 종합 감성 점수: {news.get('overall_sentiment', {}).get('score', 0)} ({news.get('overall_sentiment', {}).get('label', '중립')})
+- 긍정 뉴스: {news.get('overall_sentiment', {}).get('positive_count', 0)}건
+- 부정 뉴스: {news.get('overall_sentiment', {}).get('negative_count', 0)}건
+- 최근 뉴스 헤드라인:
+{chr(10).join([f"  - [{item.get('sentiment_label', '중립')}] {item['title']}" for item in news.get('news', [])[:3]])}
 
 **예측 요구사항:**
 1. {forecast_period} 후 예상 주가를 **반드시 숫자로만** 출력 (예: 160000)
@@ -461,8 +610,9 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
 📊 예측 근거:
 - [기술적 분석 근거]
 - [펀더멘털 분석 근거]
+- [동종업계 비교 결과]
 - [거시경제 환경 영향]
-- [뉴스 영향]
+- [뉴스 감성 분석 결과]
 
 신뢰도: [상/중/하]
 ⚠️ 리스크: [주요 위험 요인]
@@ -496,7 +646,8 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                                     
                                     # 예측 포인트
                                     last_date = df.index[-1]
-                                    period_days = {"7일": 7, "1개월": 30, "3개월": 90, "6개월": 180}
+                                    # 예측 기간을 일수로 변환
+                                    period_days = {"1일": 1, "7일": 7, "1개월": 30, "3개월": 90, "6개월": 180}
                                     future_date = last_date + pd.Timedelta(days=period_days[forecast_period])
                                     
                                     # 현재가 → 예측가 연결선
@@ -572,27 +723,38 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                     else:
                         st.info("👆 버튼을 클릭하여 AI 기반 주가 예측을 생성하세요.")
                 
+                # =============================================================
+                # 탭 3: 기술적 분석
+                # 이동평균, RSI, MACD, 볼린저밴드 등 기술적 지표 표시
+                # =============================================================
                 with tab3:
-                    # 기술적 분석
+                    # 기술적 분석 도구 호출
                     analysis = analyze_stock_trend(company_name, period)
-                    
+
                     if "error" not in analysis:
                         col1, col2 = st.columns(2)
-                        
+
+                        # 왼쪽 컬럼: 이동평균선, MACD
                         with col1:
+                            # 이동평균선 테이블
                             st.subheader("📊 이동평균선")
                             ma_data = pd.DataFrame({
-                                '지표': ['MA5', 'MA20', 'MA60'],
+                                '지표': ['MA5', 'MA20', 'MA60'],  # 5일, 20일, 60일
                                 '값': [analysis.get('ma5'), analysis.get('ma20'), analysis.get('ma60')]
                             })
                             st.dataframe(ma_data, hide_index=True, use_container_width=True)
-                            
+
+                            # MACD (Moving Average Convergence Divergence)
+                            # 추세 전환 신호를 포착하는 지표
                             st.subheader("📈 MACD")
-                            st.write(f"MACD: {analysis.get('macd', 'N/A')}")
-                            st.write(f"Signal: {analysis.get('macd_signal', 'N/A')}")
-                            st.write(f"Histogram: {analysis.get('macd_histogram', 'N/A')}")
-                        
+                            st.write(f"MACD: {analysis.get('macd', 'N/A')}")        # MACD 선
+                            st.write(f"Signal: {analysis.get('macd_signal', 'N/A')}")  # 시그널 선
+                            st.write(f"Histogram: {analysis.get('macd_histogram', 'N/A')}")  # 히스토그램
+
+                        # 오른쪽 컬럼: RSI, 볼린저밴드, 크로스 신호
                         with col2:
+                            # RSI (Relative Strength Index) - 상대강도지수
+                            # 0-100 범위, 30 이하 과매도, 70 이상 과매수
                             st.subheader("🎯 RSI")
                             rsi = analysis.get('rsi')
                             if rsi:
@@ -603,15 +765,19 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                                     st.error("과매수 구간 - 조정 가능성")
                                 else:
                                     st.info("중립 구간")
-                            
+
+                            # 볼린저밴드 - 주가 변동 범위 표시
+                            # 0%: 하단 밴드, 100%: 상단 밴드
                             st.subheader("📊 볼린저밴드")
                             bb_pos = analysis.get('bb_position')
                             if bb_pos:
-                                # 0-100 범위로 제한
-                                bb_pos_clamped = max(0, min(100, bb_pos))
+                                bb_pos_clamped = max(0, min(100, bb_pos))  # 0-100 범위로 제한
                                 st.metric("현재 위치", f"{bb_pos:.1f}%")
-                                st.progress(bb_pos_clamped / 100)
-                            
+                                st.progress(bb_pos_clamped / 100)  # 프로그레스 바로 시각화
+
+                            # 골든크로스/데드크로스 신호
+                            # 골든크로스: 단기선이 장기선을 상향 돌파 (매수 신호)
+                            # 데드크로스: 단기선이 장기선을 하향 돌파 (매도 신호)
                             if analysis.get('cross_signal'):
                                 st.subheader("⚡ 크로스 신호")
                                 signal = analysis['cross_signal']
@@ -622,16 +788,26 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                     else:
                         st.error(analysis['error'])
 
+                # =============================================================
+                # 탭 4: 펀더멘털 분석 (기본적 분석)
+                # 밸류에이션, 수익성, 재무건전성, 성장성, 기관 보유 현황
+                # =============================================================
                 with tab4:
-                    # 펀더멘털 분석 (기본적 분석)
                     st.subheader("💰 펀더멘털 분석")
 
-                    # 데이터 조회
+                    # 기본적 분석 도구 호출
                     fundamental = get_fundamental_analysis(company_name)
+                    # 기관/내부자 보유 현황 조회
                     holders = get_institutional_holders(company_name)
 
                     if "error" not in fundamental:
-                        # 밸류에이션
+                        # ---------------------------------------------------------
+                        # 밸류에이션 지표
+                        # P/E: 주가수익비율 (낮을수록 저평가)
+                        # P/B: 주가순자산비율 (1 이하면 저평가)
+                        # PEG: 주가수익성장비율 (1 이하면 저평가)
+                        # PSR: 주가매출비율
+                        # ---------------------------------------------------------
                         st.markdown("#### 📊 밸류에이션")
                         val = fundamental['valuation']
                         col1, col2, col3, col4 = st.columns(4)
@@ -653,7 +829,12 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
 
                         st.divider()
 
-                        # 수익성
+                        # ---------------------------------------------------------
+                        # 수익성 지표
+                        # ROE: 자기자본이익률 (15% 이상 우수)
+                        # ROA: 총자산이익률
+                        # 영업이익률, 순이익률
+                        # ---------------------------------------------------------
                         st.markdown("#### 📈 수익성")
                         prof = fundamental['profitability']
                         col1, col2, col3, col4 = st.columns(4)
@@ -732,11 +913,116 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                     else:
                         st.warning("펀더멘털 데이터를 조회할 수 없습니다.")
 
+                # =============================================================
+                # 탭 5: 동종업계 비교 분석
+                # 같은 섹터/업종의 경쟁사와 주요 지표 비교
+                # =============================================================
                 with tab5:
-                    # 거시경제 지표
+                    st.subheader("🏆 동종업계 비교 분석")
+
+                    with st.spinner("경쟁사 데이터 조회 중..."):
+                        # 동종업계 비교 도구 호출
+                        peer_data = get_peer_comparison(company_name)
+
+                    if "error" not in peer_data:
+                        # 섹터/업종 정보
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("섹터", peer_data.get("sector", "N/A"))
+                        with col2:
+                            st.metric("업종", peer_data.get("industry", "N/A"))
+
+                        st.divider()
+
+                        # 상대적 위치 요약
+                        st.markdown("#### 📊 업종 대비 상대 평가")
+                        rel_pos = peer_data.get("relative_position", {})
+                        cols = st.columns(3)
+
+                        metrics_labels = {
+                            "pe_ratio": ("P/E", "밸류에이션"),
+                            "pb_ratio": ("P/B", "밸류에이션"),
+                            "roe": ("ROE", "수익성"),
+                            "profit_margin": ("순이익률", "수익성"),
+                            "revenue_growth": ("매출성장률", "성장성")
+                        }
+
+                        for i, (key, (label, category)) in enumerate(metrics_labels.items()):
+                            with cols[i % 3]:
+                                position = rel_pos.get(key, "N/A")
+                                if "저평가" in str(position) or "상위" in str(position) or "이상" in str(position):
+                                    st.success(f"{label}: {position}")
+                                elif "고평가" in str(position) or "하위" in str(position) or "이하" in str(position):
+                                    st.error(f"{label}: {position}")
+                                else:
+                                    st.info(f"{label}: {position}")
+
+                        st.divider()
+
+                        # 경쟁사 비교 테이블
+                        st.markdown("#### 📈 경쟁사 비교")
+                        company_metrics = peer_data.get("company_metrics", {})
+                        peers = peer_data.get("peers", [])
+                        industry_avg = peer_data.get("industry_average", {})
+
+                        if peers:
+                            # 비교 데이터프레임 생성
+                            comparison_data = []
+
+                            # 현재 회사 데이터
+                            comparison_data.append({
+                                "회사": f"⭐ {company_name}",
+                                "P/E": company_metrics.get("pe_ratio", "-"),
+                                "P/B": company_metrics.get("pb_ratio", "-"),
+                                "ROE (%)": company_metrics.get("roe", "-"),
+                                "순이익률 (%)": company_metrics.get("profit_margin", "-"),
+                                "매출성장률 (%)": company_metrics.get("revenue_growth", "-")
+                            })
+
+                            # 경쟁사 데이터
+                            for peer in peers:
+                                comparison_data.append({
+                                    "회사": peer.get("name", peer.get("ticker", "N/A")),
+                                    "P/E": peer.get("pe_ratio", "-"),
+                                    "P/B": peer.get("pb_ratio", "-"),
+                                    "ROE (%)": peer.get("roe", "-"),
+                                    "순이익률 (%)": peer.get("profit_margin", "-"),
+                                    "매출성장률 (%)": peer.get("revenue_growth", "-")
+                                })
+
+                            # 업종 평균 행 추가
+                            comparison_data.append({
+                                "회사": "📊 업종 평균",
+                                "P/E": industry_avg.get("pe_ratio", "-"),
+                                "P/B": industry_avg.get("pb_ratio", "-"),
+                                "ROE (%)": industry_avg.get("roe", "-"),
+                                "순이익률 (%)": industry_avg.get("profit_margin", "-"),
+                                "매출성장률 (%)": industry_avg.get("revenue_growth", "-")
+                            })
+
+                            df_comparison = pd.DataFrame(comparison_data)
+                            st.dataframe(df_comparison, hide_index=True, use_container_width=True)
+
+                            st.caption(f"비교 대상: {peer_data.get('peer_count', 0)}개 경쟁사")
+                        else:
+                            st.info("비교 가능한 경쟁사 데이터가 없습니다.")
+                    else:
+                        st.warning("동종업계 비교 데이터를 조회할 수 없습니다.")
+
+                # =============================================================
+                # 탭 6: 거시경제 지표
+                # 시장 전반의 상황을 파악하기 위한 매크로 데이터
+                # - 주요 지수 (S&P 500, NASDAQ, KOSPI 등)
+                # - VIX (공포지수)
+                # - 채권 금리
+                # - 환율
+                # - 원자재 가격
+                # =============================================================
+                with tab6:
                     st.subheader("🌍 거시경제 지표")
 
                     with st.spinner("거시경제 데이터 조회 중..."):
+                        # 거시경제 지표 도구 호출
                         macro = get_macro_indicators()
 
                     # 시장 심리 배너
@@ -811,36 +1097,109 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                                 f"{change:+.2f}%"
                             )
 
-                with tab6:
-                    # 뉴스 분석
+                # =============================================================
+                # 탭 7: 뉴스 감성 분석
+                # NLP 기반 키워드 감성 분석으로 뉴스의 긍정/부정 판단
+                # - 종합 감성 점수 (-100 ~ +100)
+                # - 개별 기사별 감성 분석
+                # - 긍정/부정 키워드 하이라이트
+                # =============================================================
+                with tab7:
+                    # 뉴스 감성 분석 도구 호출
                     news = analyze_company_news(company_name)
 
                     if "error" not in news and news.get('news'):
+                        # 종합 감성 점수 및 라벨
+                        overall = news.get("overall_sentiment", {})
+                        overall_score = overall.get("score", 0)  # -100 ~ +100
+                        overall_label = overall.get("label", "중립")  # 매우긍정/긍정/중립/부정/매우부정
+
                         st.subheader(f"📰 최근 뉴스 ({news['news_count']}건)")
+
+                        # 감성 점수 요약
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            if overall_score > 0:
+                                st.metric("종합 감성", overall_label, f"+{overall_score}")
+                            else:
+                                st.metric("종합 감성", overall_label, f"{overall_score}")
+                        with col2:
+                            st.metric("긍정 뉴스", f"{overall.get('positive_count', 0)}건", delta_color="off")
+                        with col3:
+                            st.metric("부정 뉴스", f"{overall.get('negative_count', 0)}건", delta_color="off")
+                        with col4:
+                            st.metric("중립 뉴스", f"{overall.get('neutral_count', 0)}건", delta_color="off")
+
+                        # 감성 게이지 (-100 ~ +100)
+                        normalized_score = (overall_score + 100) / 200  # 0~1 범위로 변환
+                        st.progress(normalized_score)
+                        st.caption("← 부정적 (-100) ————— 중립 (0) ————— 긍정적 (+100) →")
+
+                        st.divider()
+
+                        # 개별 뉴스 (감성 점수 포함)
                         for item in news['news']:
                             with st.container():
-                                st.markdown(f"**{item['title']}**")
+                                # 감성 배지
+                                sentiment_score = item.get("sentiment_score", 0)
+                                sentiment_label = item.get("sentiment_label", "중립")
+
+                                col1, col2 = st.columns([4, 1])
+                                with col1:
+                                    st.markdown(f"**{item['title']}**")
+                                with col2:
+                                    if sentiment_score > 0:
+                                        st.success(f"😊 +{sentiment_score}")
+                                    elif sentiment_score < 0:
+                                        st.error(f"😟 {sentiment_score}")
+                                    else:
+                                        st.info(f"😐 {sentiment_score}")
+
+                                # 키워드 표시
+                                pos_kw = item.get("positive_keywords", [])
+                                neg_kw = item.get("negative_keywords", [])
+                                if pos_kw or neg_kw:
+                                    kw_text = ""
+                                    if pos_kw:
+                                        kw_text += f"🟢 {', '.join(pos_kw[:3])} "
+                                    if neg_kw:
+                                        kw_text += f"🔴 {', '.join(neg_kw[:3])}"
+                                    st.caption(kw_text)
+
                                 st.caption(f"📅 {item['published']}")
                                 st.link_button("기사 보기", item['link'], use_container_width=True)
                                 st.divider()
                     else:
                         st.warning("뉴스를 찾을 수 없습니다.")
-            
-            # AI 분석 추가
+
+            # =============================================================
+            # AI 종합 분석
+            # 모든 도구를 활용하여 종합적인 투자 판단 제공
+            # =============================================================
             st.markdown("---")
             st.subheader("🤖 AI 종합 분석")
-            
-            # 매번 새로운 Agent 인스턴스 생성
+
+            # AI 에이전트 인스턴스 생성
+            # 7개 도구를 모두 활용하여 종합 분석 수행
             agent = Agent(
                 model=st.session_state.bedrock_model,
-                tools=[get_stock_price, analyze_stock_trend, get_fundamental_analysis, get_institutional_holders, get_macro_indicators, analyze_company_news],
+                tools=[
+                    get_stock_price,           # 현재가 조회
+                    analyze_stock_trend,       # 기술적 분석
+                    get_fundamental_analysis,  # 기본적 분석
+                    get_institutional_holders, # 기관 보유 현황
+                    get_peer_comparison,       # 동종업계 비교
+                    get_macro_indicators,      # 거시경제 지표
+                    analyze_company_news       # 뉴스 감성 분석
+                ],
                 system_prompt=st.session_state.system_prompt
             )
-            
+
+            # AI 에이전트 실행 및 응답 표시
             response = agent(user_input)
             st.markdown(str(response))
-            
-            # 히스토리 저장
+
+            # 조회 히스토리에 저장 (최근 검색 기록 유지)
             st.session_state.history.append({
                 "query": user_input,
                 "response": str(response)
@@ -849,15 +1208,22 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
         except Exception as e:
             st.error(f"오류가 발생했습니다: {str(e)}")
 
-# 히스토리 표시
+# =============================================================================
+# 조회 히스토리 표시
+# 최근 5개 검색 기록을 접을 수 있는 패널로 표시
+# =============================================================================
 if st.session_state.history:
     st.markdown("---")
     with st.expander("📜 조회 히스토리", expanded=False):
+        # 최근 5개만 역순으로 표시 (최신이 위로)
         for i, item in enumerate(reversed(st.session_state.history[-5:]), 1):
             st.markdown(f"**{i}. {item['query']}**")
+            # 응답이 길면 200자까지만 미리보기
             st.text(item['response'][:200] + "..." if len(item['response']) > 200 else item['response'])
             st.markdown("---")
 
-# 푸터
+# =============================================================================
+# 푸터 - 면책 조항
+# =============================================================================
 st.markdown("---")
 st.caption("⚠️ 이 분석은 참고용이며, 투자 판단은 본인의 책임입니다.")

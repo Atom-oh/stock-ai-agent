@@ -5,6 +5,7 @@ import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
 export class StockAppStack extends cdk.Stack {
@@ -17,13 +18,30 @@ export class StockAppStack extends cdk.Stack {
       natGateways: 1,
     });
 
+    // ==========================================================================
+    // 보안: CloudFront Origin 검증용 비밀 헤더 생성
+    // ALB는 이 헤더가 있는 요청만 허용하여 직접 접근을 차단
+    // ==========================================================================
+    const originVerifySecret = new secretsmanager.Secret(this, 'OriginVerifySecret', {
+      description: 'Secret header value for CloudFront to ALB origin verification',
+      generateSecretString: {
+        excludePunctuation: true,
+        passwordLength: 32,
+      },
+    });
+
     // Security Group for ALB
+    // CloudFront Managed Prefix List를 사용하여 CloudFront IP만 허용
     const albSg = new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
       vpc,
-      description: 'Security group for ALB',
+      description: 'Security group for ALB - CloudFront only',
       allowAllOutbound: true,
     });
-    albSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Allow HTTP');
+
+    // CloudFront Managed Prefix List를 통해 CloudFront IP 범위만 허용
+    // 이렇게 하면 ALB에 직접 접근이 불가능해짐
+    const cloudfrontPrefixList = ec2.Peer.prefixList('pl-3b927c52'); // us-east-1 CloudFront prefix list
+    albSg.addIngressRule(cloudfrontPrefixList, ec2.Port.tcp(80), 'Allow HTTP from CloudFront only');
 
     // Security Group for EC2
     const ec2Sg = new ec2.SecurityGroup(this, 'Ec2SecurityGroup', {
@@ -98,17 +116,39 @@ export class StockAppStack extends cdk.Stack {
       },
     });
 
-    // Listener
-    alb.addListener('HttpListener', {
+    // ==========================================================================
+    // ALB Listener 설정
+    // 커스텀 헤더 검증을 통해 CloudFront 외 접근 차단
+    // ==========================================================================
+    const listener = alb.addListener('HttpListener', {
       port: 80,
-      defaultTargetGroups: [targetGroup],
+      defaultAction: elbv2.ListenerAction.fixedResponse(403, {
+        contentType: 'text/plain',
+        messageBody: 'Access Denied - Direct access not allowed',
+      }),
     });
 
+    // X-Origin-Verify 헤더가 있는 요청만 허용
+    listener.addAction('AllowCloudFrontOnly', {
+      priority: 1,
+      conditions: [
+        elbv2.ListenerCondition.httpHeader('X-Origin-Verify', [originVerifySecret.secretValue.unsafeUnwrap()]),
+      ],
+      action: elbv2.ListenerAction.forward([targetGroup]),
+    });
+
+    // ==========================================================================
     // CloudFront Distribution
+    // 비밀 헤더를 추가하여 Origin(ALB)으로 요청 전달
+    // ==========================================================================
     const distribution = new cloudfront.Distribution(this, 'StockAppDistribution', {
       defaultBehavior: {
         origin: new origins.LoadBalancerV2Origin(alb, {
           protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          // CloudFront → ALB 요청에 비밀 헤더 추가
+          customHeaders: {
+            'X-Origin-Verify': originVerifySecret.secretValue.unsafeUnwrap(),
+          },
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
