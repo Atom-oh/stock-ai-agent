@@ -6,9 +6,11 @@ Strands Agents SDK와 Amazon Bedrock Claude 모델을 사용한 주식 정보 �
 
 ![AWS 아키텍처](images/architecture.png)
 
-**배포 구조**: CloudFront (HTTPS) → ALB (HTTP:80) → EC2 (Streamlit) → Bedrock Claude 3.5
+**배포 구조**: User -> CloudFront (HTTPS) → ALB (HTTP:80) → EC2 (Streamlit) → Bedrock Claude 3.5
 
 ## 📸 스크린샷
+
+[📺 전과정 보기](https://youtu.be/Fy1OkAH-PJ0?si=8uR1r2ScOfdrgFx9)
 
 ### 메인 화면 - 주가 차트
 ![메인 화면](images/fig1.png)
