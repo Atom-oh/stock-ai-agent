@@ -1,67 +1,72 @@
-
-# MCP 서버 목록 확인
-kiro-cli mcp list
-
-# 특정 MCP 서버 
-kiro-cli chat  # 채팅에서 MCP 도구 사용 가능
-
-## 🔧 MCP 서버 관리 명령어
-
-### ✅ 활성화된 서버
-
-1. cdk - AWS CDK MCP Server
-   - AWS CDK 관련 작업 지원
-   - 명령: uvx awslabs.cdk-mcp-server@latest
-
-2. aws-diagram - AWS Diagram MCP Server
-   - AWS 아키텍처 다이어그램 생성
-   - 명령: uvx awslabs.aws-diagram-mcp-server@latest
-
-3. frontend - Frontend MCP Server
-   - 프론트엔드 개발 지원 (React 등)
-   - 명령: uvx awslabs.frontend-mcp-server@latest
-
-4. aws-sentral-mcp - AWS Sentral MCP
-   - AWS Salesforce 통합 (AWSentral)
-   - 명령: aws-sentral-mcp
-
-5. aws-docs - AWS Documentation MCP Server
-   - AWS 문서 검색 및 조회
-   - 명령: uvx awslabs.aws-documentation-mcp-server@latest
-
-6. notion - Notion MCP Server
-   - Notion API 통합
-
-### ❌ 비활성화된 서버
-
-- **github** - GitHub MCP Server (disabled: true)
-
-이 프로젝트에서는 aws-docs, cdk, aws-diagram MCP 서버를 주로 사용했습니다! 🚀
-
 # Kiro CLI 코딩 가이드
 
+![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-Guide-232F3E?logo=amazon-aws&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-CDK-FF9900?logo=amazon-aws&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-Server-blue)
+
+> **Stock AI Agent** 프로젝트에서 실제로 사용된 Kiro CLI 기능과 워크플로우를 정리한 가이드입니다.
+
+---
+
 ## 📚 목차
+
 1. [프로젝트 개요](#프로젝트-개요)
-2. [적용된 Kiro CLI 기능](#적용된-kiro-cli-기능)
-3. [개발 워크플로우](#개발-워크플로우)
-4. [코드 품질 관리](#코드-품질-관리)
-5. [AWS 인프라 배포](#aws-인프라-배포)
-6. [베스트 프랙티스](#베스트-프랙티스)
+2. [MCP 서버 설정](#-mcp-서버-설정)
+3. [적용된 Kiro CLI 기능](#적용된-kiro-cli-기능)
+4. [개발 워크플로우](#개발-워크플로우)
+5. [코드 품질 관리](#코드-품질-관리)
+6. [AWS 인프라 배포](#aws-인프라-배포)
+7. [베스트 프랙티스](#베스트-프랙티스)
+8. [트러블슈팅](#트러블슈팅)
+9. [요약](#요약)
 
 ---
 
 ## 프로젝트 개요
 
-**프로젝트명**: Stock AI Agent  
-**목적**: 실시간 주가 분석 및 AI 기반 예측 서비스  
-**기술 스택**: Streamlit, Bedrock Claude 3.5, yfinance, AWS CDK  
-**배포 환경**: CloudFront → ALB → EC2 (us-east-1)
+| 항목 | 내용 |
+|------|------|
+| **프로젝트명** | Stock AI Agent |
+| **목적** | 실시간 주가 분석 및 AI 기반 예측 서비스 |
+| **기술 스택** | Streamlit, Bedrock Claude 3.5, yfinance, AWS CDK |
+| **배포 환경** | CloudFront → ALB → EC2 (us-east-1) |
+
+---
+
+## 🔧 MCP 서버 설정
+
+### 기본 명령어
+
+```bash
+# MCP 서버 목록 확인
+kiro-cli mcp list
+
+# 채팅에서 MCP 도구 사용
+kiro-cli chat
+```
+
+### ✅ 활성화된 서버
+
+| 서버명 | 설명 | 명령어 |
+|--------|------|--------|
+| **cdk** | AWS CDK 관련 작업 지원 | `uvx awslabs.cdk-mcp-server@latest` |
+| **aws-diagram** | AWS 아키텍처 다이어그램 생성 | `uvx awslabs.aws-diagram-mcp-server@latest` |
+| **frontend** | 프론트엔드 개발 지원 (React 등) | `uvx awslabs.frontend-mcp-server@latest` |
+| **aws-sentral-mcp** | AWS Salesforce 통합 | `aws-sentral-mcp` |
+| **aws-docs** | AWS 문서 검색 및 조회 | `uvx awslabs.aws-documentation-mcp-server@latest` |
+| **notion** | Notion API 통합 | - |
+
+### ❌ 비활성화된 서버
+
+- **github** - GitHub MCP Server (`disabled: true`)
+
+> 💡 이 프로젝트에서는 `aws-docs`, `cdk`, `aws-diagram` MCP 서버를 주로 사용했습니다!
 
 ---
 
 ## 적용된 Kiro CLI 기능
 
-### 1. **파일 시스템 작업 (`fs_read`, `fs_write`)**
+### 1. 파일 시스템 작업 (`fs_read`, `fs_write`)
 
 #### 사용 사례
 ```bash
@@ -96,7 +101,7 @@ fs_write(
 
 ---
 
-### 2. **Bash 명령 실행 (`execute_bash`)**
+### 2. Bash 명령 실행 (`execute_bash`)
 
 #### 사용 사례
 ```bash
@@ -129,7 +134,7 @@ cdk deploy --require-approval never
 
 ---
 
-### 3. **코드 검색 및 분석 (`grep`, `glob`)**
+### 3. 코드 검색 및 분석 (`grep`, `glob`)
 
 #### 사용 사례
 ```bash
@@ -162,7 +167,7 @@ find . -name "*.png" -o -name "*.jpg" | grep -v node_modules
 
 ---
 
-### 4. **AWS 리소스 관리 (`use_aws`)**
+### 4. AWS 리소스 관리 (`use_aws`)
 
 #### 사용 사례
 ```bash
@@ -206,7 +211,7 @@ aws ssm send-command \
 
 ---
 
-### 5. **다이어그램 생성 (`generate_diagram`)**
+### 5. 다이어그램 생성 (`generate_diagram`)
 
 #### 사용 사례
 ```python
@@ -217,7 +222,7 @@ with Diagram("Stock AI Agent", show=False, direction="LR"):
     alb = ELB("ALB")
     ec2 = EC2("EC2")
     bedrock = Bedrock("Bedrock")
-    
+
     user >> cf >> alb >> ec2 >> bedrock
 ```
 
@@ -236,7 +241,7 @@ with Diagram("Architecture", show=False, filename="architecture"):
         alb = ELB("ALB")
         ec2 = EC2("EC2")
         bedrock = Bedrock("Bedrock")
-    
+
     cf >> alb >> ec2 >> bedrock
 EOF
 ```
@@ -248,7 +253,7 @@ EOF
 
 ---
 
-### 6. **TODO 리스트 관리 (`todo_list`)**
+### 6. TODO 리스트 관리 (`todo_list`)
 
 #### 사용 사례
 ```bash
@@ -297,7 +302,7 @@ todo_list --command add \
 
 ## 개발 워크플로우
 
-### 1. **프로젝트 초기화**
+### 1. 프로젝트 초기화
 ```bash
 # 1. 디렉토리 생성 및 이동
 mkdir stock-ai-agent && cd stock-ai-agent
@@ -315,7 +320,7 @@ echo "venv/" >> .gitignore
 echo "*.pyc" >> .gitignore
 ```
 
-### 2. **코드 작성 및 테스트**
+### 2. 코드 작성 및 테스트
 ```bash
 # 1. 로컬 테스트
 streamlit run app.py
@@ -328,7 +333,7 @@ grep -r "FIXME" --include="*.py"
 grep -r -E "(AKIA|aws_secret)" --include="*.py"
 ```
 
-### 3. **AWS 배포**
+### 3. AWS 배포
 ```bash
 # 1. S3 버킷 생성 및 코드 업로드
 aws s3 mb s3://deploy-bucket-$(date +%s)
@@ -349,7 +354,7 @@ curl -I https://cloudfront-url.cloudfront.net
 
 ## 코드 품질 관리
 
-### 1. **에러 처리 패턴**
+### 1. 에러 처리 패턴
 ```python
 # ✅ 좋은 예시
 try:
@@ -363,17 +368,17 @@ except Exception as e:
 price = yf.Ticker(ticker).info['currentPrice']  # KeyError 가능
 ```
 
-### 2. **한글 주석 작성**
+### 2. 한글 주석 작성
 ```python
 def get_stock_price(company_name: str) -> dict:
     """주가 조회 함수
-    
+
     Args:
         company_name: 회사명 (한글 또는 영문)
-    
+
     Returns:
         dict: 주가 정보 (currentPrice, change, changePercent)
-    
+
     처리 로직:
         1. 회사명을 티커 심볼로 변환
         2. yfinance로 주가 조회
@@ -381,13 +386,13 @@ def get_stock_price(company_name: str) -> dict:
     """
     # 공백 제거 ("SK 하이닉스" → "SK하이닉스")
     cleaned_name = company_name.replace(" ", "")
-    
+
     # 티커 매핑에서 검색
     ticker = TICKER_MAP.get(cleaned_name.lower())
     ...
 ```
 
-### 3. **보안 검사 체크리스트**
+### 3. 보안 검사 체크리스트
 ```bash
 # 1. Access Key 검색
 grep -r "AKIA[0-9A-Z]{16}" --include="*.py"
@@ -406,7 +411,7 @@ grep -r -i -E "(email|phone|address)" --include="*.py"
 
 ## AWS 인프라 배포
 
-### 1. **CDK 스택 구조**
+### 1. CDK 스택 구조
 ```typescript
 // cdk/lib/stock-app-stack.ts
 export class StockAppStack extends Stack {
@@ -456,7 +461,7 @@ export class StockAppStack extends Stack {
 }
 ```
 
-### 2. **배포 명령어**
+### 2. 배포 명령어
 ```bash
 # 1. CDK 초기화
 cd cdk
@@ -475,7 +480,7 @@ cdk deploy | grep -E "(CloudFront|ALB)"
 cdk destroy
 ```
 
-### 3. **배포 후 검증**
+### 3. 배포 후 검증
 ```bash
 # 1. CloudFront URL 테스트
 curl -I https://d3i1wyhxyywpz2.cloudfront.net
@@ -501,41 +506,46 @@ aws ssm send-command \
 
 ## 베스트 프랙티스
 
-### 1. **파일 작업**
-- ✅ `fs_read`로 파일 내용 확인 후 수정
-- ✅ `str_replace`는 정확한 문자열 매칭
-- ✅ 여러 파일 수정 시 배치 작업
-- ❌ 파일 전체를 읽지 않고 수정하지 말 것
+### 1. 파일 작업
+| 권장 | 비권장 |
+|------|--------|
+| ✅ `fs_read`로 파일 내용 확인 후 수정 | ❌ 파일 전체를 읽지 않고 수정 |
+| ✅ `str_replace`는 정확한 문자열 매칭 | |
+| ✅ 여러 파일 수정 시 배치 작업 | |
 
-### 2. **Bash 명령**
-- ✅ `--summary`로 명령 목적 명시
-- ✅ 긴 출력은 `tail` 또는 `head`로 제한
-- ✅ 에러 처리: `2>&1`로 stderr 캡처
-- ❌ 대화형 명령 사용 금지 (`vim`, `nano`)
+### 2. Bash 명령
+| 권장 | 비권장 |
+|------|--------|
+| ✅ `--summary`로 명령 목적 명시 | ❌ 대화형 명령 사용 (`vim`, `nano`) |
+| ✅ 긴 출력은 `tail` 또는 `head`로 제한 | |
+| ✅ 에러 처리: `2>&1`로 stderr 캡처 | |
 
-### 3. **AWS 작업**
-- ✅ `--query`로 필요한 데이터만 추출
-- ✅ `--output text`로 파싱 간소화
-- ✅ 리소스 태그로 필터링
-- ❌ 하드코딩된 ARN 사용 금지
+### 3. AWS 작업
+| 권장 | 비권장 |
+|------|--------|
+| ✅ `--query`로 필요한 데이터만 추출 | ❌ 하드코딩된 ARN 사용 |
+| ✅ `--output text`로 파싱 간소화 | |
+| ✅ 리소스 태그로 필터링 | |
 
-### 4. **코드 품질**
-- ✅ 한글 주석으로 로직 설명
-- ✅ Try-except로 에러 처리
-- ✅ 타입 힌트 사용
-- ❌ 민감 정보 하드코딩 금지
+### 4. 코드 품질
+| 권장 | 비권장 |
+|------|--------|
+| ✅ 한글 주석으로 로직 설명 | ❌ 민감 정보 하드코딩 |
+| ✅ Try-except로 에러 처리 | |
+| ✅ 타입 힌트 사용 | |
 
-### 5. **배포**
-- ✅ S3로 코드 배포 (GitHub 불필요)
-- ✅ UserData로 자동 설치
-- ✅ CloudFront로 HTTPS 제공
-- ❌ EC2에 직접 SSH 접속 금지 (SSM 사용)
+### 5. 배포
+| 권장 | 비권장 |
+|------|--------|
+| ✅ S3로 코드 배포 (GitHub 불필요) | ❌ EC2에 직접 SSH 접속 (SSM 사용) |
+| ✅ UserData로 자동 설치 | |
+| ✅ CloudFront로 HTTPS 제공 | |
 
 ---
 
 ## 트러블슈팅
 
-### 1. **Streamlit이 시작되지 않을 때**
+### 1. Streamlit이 시작되지 않을 때
 ```bash
 # SSM으로 접속
 aws ssm start-session --target i-xxx
@@ -550,7 +560,7 @@ source venv/bin/activate
 streamlit run app.py --server.port 8501
 ```
 
-### 2. **ALB 헬스 체크 실패**
+### 2. ALB 헬스 체크 실패
 ```bash
 # 타겟 상태 확인
 aws elbv2 describe-target-health --target-group-arn ARN
@@ -563,7 +573,7 @@ aws ec2 describe-security-groups \
 curl http://ec2-public-ip:8501
 ```
 
-### 3. **Code Defender 푸시 차단**
+### 3. Code Defender 푸시 차단
 ```bash
 # 승인 요청
 git-defender --request-repo \
@@ -581,26 +591,37 @@ git push origin main
 
 ## 요약
 
-이 가이드는 **Stock AI Agent** 프로젝트에서 실제로 사용된 Kiro CLI 기능과 워크플로우를 정리한 것입니다.
+### 핵심 기능
 
-**핵심 기능**:
-- 파일 시스템 작업 (`fs_read`, `fs_write`)
-- Bash 명령 실행 (`execute_bash`)
-- 코드 검색 (`grep`, `glob`)
-- AWS 리소스 관리 (`use_aws`)
-- 다이어그램 생성 (`generate_diagram`)
-- TODO 관리 (`todo_list`)
+| 기능 | 설명 |
+|------|------|
+| `fs_read`, `fs_write` | 파일 시스템 작업 |
+| `execute_bash` | Bash 명령 실행 |
+| `grep`, `glob` | 코드 검색 |
+| `use_aws` | AWS 리소스 관리 |
+| `generate_diagram` | 다이어그램 생성 |
+| `todo_list` | TODO 관리 |
 
-**개발 프로세스**:
+### 개발 프로세스
+
+```
 1. 로컬 개발 및 테스트
+       ↓
 2. 코드 품질 검사
+       ↓
 3. S3 업로드
+       ↓
 4. CDK 배포
+       ↓
 5. 배포 검증
+```
 
-**배포 아키텍처**:
+### 배포 아키텍처
+
 ```
 사용자 → CloudFront (HTTPS) → ALB (HTTP:80) → EC2 (Streamlit) → Bedrock
 ```
 
-이 가이드를 참고하여 유사한 프로젝트를 효율적으로 개발하고 배포할 수 있습니다! 🚀
+---
+
+> 이 가이드를 참고하여 유사한 프로젝트를 효율적으로 개발하고 배포할 수 있습니다! 🚀
