@@ -6,6 +6,7 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import re
 from stock_agent import get_stock_price, analyze_stock_trend, analyze_company_news, get_ticker
 from strands import Agent
 from strands.models import BedrockModel
@@ -259,17 +260,24 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                     
                     # 주요 지표 카드
                     current_price = df['Close'].iloc[-1]
-                    prev_price = df['Close'].iloc[-2]
+                    prev_price = df['Close'].iloc[-2] if len(df) > 1 else current_price
                     change = current_price - prev_price
-                    change_pct = (change / prev_price) * 100
-                    
+                    # ZeroDivision 방지
+                    change_pct = (change / prev_price) * 100 if prev_price > 0 else 0
+
+                    # 통화 단위 결정 (한국 주식: 원, 미국 주식: $)
+                    currency = "원" if ticker.endswith(".KS") else "$"
+                    price_format = f"{current_price:,.0f}{currency}" if ticker.endswith(".KS") else f"${current_price:,.2f}"
+                    high_format = f"{df['High'].max():,.0f}{currency}" if ticker.endswith(".KS") else f"${df['High'].max():,.2f}"
+                    low_format = f"{df['Low'].min():,.0f}{currency}" if ticker.endswith(".KS") else f"${df['Low'].min():,.2f}"
+
                     col1, col2, col3, col4 = st.columns(4)
                     with col1:
-                        st.metric("현재가", f"{current_price:,.0f}원", f"{change_pct:+.2f}%")
+                        st.metric("현재가", price_format, f"{change_pct:+.2f}%")
                     with col2:
-                        st.metric("최고가", f"{df['High'].max():,.0f}원")
+                        st.metric("최고가", high_format)
                     with col3:
-                        st.metric("최저가", f"{df['Low'].min():,.0f}원")
+                        st.metric("최저가", low_format)
                     with col4:
                         st.metric("거래량", f"{df['Volume'].iloc[-1]:,.0f}")
                 
@@ -347,7 +355,6 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                                 forecast_response = str(forecast_agent(f"{company_name} {forecast_period} 주가 예측"))
                                 
                                 # 예측 주가 추출
-                                import re
                                 price_match = re.search(r'예상주가:\s*([0-9,.]+)', forecast_response)
                                 predicted_price = None
                                 if price_match:
@@ -408,15 +415,20 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                                     
                                     # 예측 요약 카드
                                     price_change = predicted_price - current_price
-                                    price_change_pct = (price_change / current_price) * 100
-                                    
+                                    # ZeroDivision 방지
+                                    price_change_pct = (price_change / current_price) * 100 if current_price > 0 else 0
+
+                                    # 통화 단위 결정
+                                    curr_format = f"{current_price:,.0f}원" if ticker.endswith(".KS") else f"${current_price:,.2f}"
+                                    pred_format = f"{predicted_price:,.0f}원" if ticker.endswith(".KS") else f"${predicted_price:,.2f}"
+
                                     col1, col2, col3 = st.columns(3)
                                     with col1:
-                                        st.metric("현재가", f"{current_price:,.0f}원")
+                                        st.metric("현재가", curr_format)
                                     with col2:
                                         st.metric(
                                             f"{forecast_period} 후 예측",
-                                            f"{predicted_price:,.0f}원",
+                                            pred_format,
                                             f"{price_change_pct:+.2f}%"
                                         )
                                     with col3:
@@ -490,7 +502,7 @@ if (analyze_button or st.session_state.get('auto_analyze')) and user_input:
                     else:
                         st.error(analysis['error'])
                 
-                with tab3:
+                with tab4:
                     # 뉴스 분석
                     news = analyze_company_news(company_name)
                     
