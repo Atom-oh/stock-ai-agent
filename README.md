@@ -1,11 +1,11 @@
-# 주식 정보 AI Agent
+# 주식분석 및 예측 어플리케이션 Agent 
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-Bedrock-FF9900?logo=amazon-aws&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-Kiro_CLI-232F3E?logo=amazon-aws&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.0+-FF4B4B?logo=streamlit&logoColor=white)
 
-Strands Agents SDK와 Amazon Bedrock Claude 모델을 사용한 주식 정보 조회 AI Agent입니다.
+Strands Agents SDK와 Amazon Bedrock Claude 모델을 사용한 주식 정보 조회, 분석, 예측 Agent 서비스입니다.
 
 ## 🎬 데모 영상
 
@@ -15,7 +15,29 @@ Strands Agents SDK와 Amazon Bedrock Claude 모델을 사용한 주식 정보 �
 
 ![AWS 아키텍처](images/architecture.png)
 
-**배포 구조**: User -> CloudFront (HTTPS) → ALB (HTTP:80) → EC2 (Streamlit) → Bedrock Claude 3.5
+<details>
+<summary>📊 아키텍처 다이어그램 (텍스트 버전)</summary>
+
+```mermaid
+flowchart LR
+    subgraph AWS Cloud
+        S3[🪣 S3<br/>Code Deploy]
+        CF[🌐 CloudFront<br/>HTTPS]
+        ALB[⚖️ ALB<br/>HTTP:80]
+        EC2[💻 EC2 t3.medium<br/>Streamlit App]
+        Bedrock[🤖 Bedrock<br/>Claude 3.5]
+    end
+
+    User[👤 사용자] --> CF
+    CF --> ALB
+    ALB --> EC2
+    EC2 <--> |API Calls| Bedrock
+    S3 -.-> |Download| EC2
+```
+
+</details>
+
+**배포 구조**: User → CloudFront (HTTPS) → ALB (HTTP:80) → EC2 (Streamlit) → Bedrock Claude 3.5
 
 ## 📸 스크린샷
 
