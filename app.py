@@ -326,7 +326,17 @@ with col1:
     )
 
 with col2:
-    # 분석 시작 버튼
+    # 분석 시작 버튼 (크기 2배 확대)
+    st.markdown("""
+    <style>
+    div[data-testid="column"]:nth-of-type(2) button {
+        font-size: 1.5rem !important;
+        padding: 1rem 2rem !important;
+        height: auto !important;
+        min-height: 80px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     analyze_button = st.button("🔍 분석하기", type="primary", use_container_width=True)
 
 # -------------------------------------------------------------------------
