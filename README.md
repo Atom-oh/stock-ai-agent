@@ -1,6 +1,6 @@
 # 주식분석 및 예측 어플리케이션 Agent 
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-Bedrock-FF9900?logo=amazon-aws&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-Kiro_CLI-232F3E?logo=amazon-aws&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.0+-FF4B4B?logo=streamlit&logoColor=white)
@@ -60,28 +60,24 @@ flowchart LR
   6. 🌍 거시경제 지표 → 금리, 환율, VIX 분석
   7. 📰 뉴스 감성 분석 → 최신 뉴스 NLP 분석
   8. 🤖 AI 종합 판단 → Claude AI 분석 진행
-<!-- 
-- 실시간 주식 현재가 조회
-- 전일 대비 변동률 계산
-- **주가 추이 분석**
-  - 이동평균선 (5일, 20일, 60일)
-  - RSI (상대강도지수) - 과매수/과매도 판단
-  - MACD (이동평균수렴확산) - 추세 전환 신호
-  - 볼린저 밴드 - 가격 변동성 및 과열/침체 구간
-  - 골든크로스/데드크로스 - 매수/매도 타이밍
-  - 변동성 및 거래량 분석
-  - 기간별 수익률 계산
-- **뉴스 감성 분석** (NEW)
-  - Google News에서 최근 뉴스 수집
-  - AI 기반 긍정/부정/중립 판단
-  - 주가 영향도 평가
-- 한글로 친절한 응답 제공 -->
+
+### 🎯 주요 특징
+- **실시간 진행 상황 표시**: AI 분석 중 8단계 진행률 + 투자 팁 제공
+- **매수/매도/관망 신호**: 종합 분석 결과를 한눈에 확인
+- **NLP 뉴스 감성 분석**: Google News 기반 긍정/부정 점수화 (-100 ~ +100)
+- **한글 완벽 지원**: 모든 분석 결과를 한글로 친절하게 제공
 
 ## 기술 스택
 
-- **Strands Agents SDK**: AI Agent 프레임워크
-- **Amazon Bedrock**: Claude 3.5 Sonnet 모델
-- **yfinance**: 주가 데이터 조회
+| 카테고리 | 기술 |
+|----------|------|
+| AI Framework | Strands Agents SDK |
+| AI Model | Amazon Bedrock Claude 3.5 Sonnet |
+| Frontend | Streamlit, Plotly |
+| Data | yfinance, Google News RSS |
+| Infrastructure | AWS CDK (CloudFront, ALB, EC2, S3) |
+| Security | CloudFront Prefix List, Secret Header 검증 |
+| Logging | ALB/CloudFront Access Logs → S3 |
 
 ## 설치 방법
 
@@ -128,6 +124,30 @@ python stock_agent.py
 ```
 
 브라우저가 자동으로 열리며 `http://localhost:8501`에서 접속 가능합니다.
+
+## AWS 배포 (CDK)
+
+```bash
+# CDK 디렉토리로 이동
+cd cdk
+
+# 의존성 설치
+npm install
+
+# AWS 계정 부트스트랩 (최초 1회)
+npx cdk bootstrap
+
+# 배포
+npx cdk deploy
+```
+
+배포 완료 후 출력되는 **CloudFront URL**로 접속할 수 있습니다.
+
+### 🔒 보안 구성
+- EC2: Private Subnet에 배치 (직접 접근 불가)
+- ALB: CloudFront Managed Prefix List로 CloudFront IP만 허용
+- Origin 검증: X-Origin-Verify 비밀 헤더로 직접 ALB 접근 차단
+- 로깅: ALB/CloudFront 액세스 로그 → S3 (90일 보관)
 
 ## 사용 예시
 
@@ -189,12 +209,17 @@ python stock_agent.py
 
 ```
 .
-├── stock_agent.py      # 메인 Agent 코드 (CLI 버전)
-├── app.py             # Streamlit UI 버전
-├── run_app.sh         # Streamlit 실행 스크립트
-├── requirements.txt    # 패키지 의존성
-├── .env.example       # 환경변수 예시
-└── README.md          # 프로젝트 문서
+├── app.py              # Streamlit UI (메인 애플리케이션)
+├── stock_agent.py      # AI Agent 도구 정의
+├── run_app.sh          # 로컬 실행 스크립트
+├── requirements.txt    # Python 패키지 의존성
+├── cdk/                # AWS CDK 인프라 코드
+│   ├── lib/
+│   │   └── stock-app-stack.ts  # CloudFront, ALB, EC2, S3 설정
+│   └── bin/
+│       └── stock-app.ts
+├── images/             # 스크린샷 및 아키텍처 이미지
+└── README.md
 ```
 
 ## 코드 품질
